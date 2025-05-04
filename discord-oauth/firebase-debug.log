@@ -1,0 +1,25 @@
+[debug] [2025-05-04T18:57:37.562Z] ----------------------------------------------------------------------
+[debug] [2025-05-04T18:57:37.566Z] Command:       C:\nvm4w\nodejs\node.exe C:\nvm4w\nodejs\node_modules\firebase-tools\lib\bin\firebase.js init
+[debug] [2025-05-04T18:57:37.566Z] CLI Version:   14.2.2
+[debug] [2025-05-04T18:57:37.566Z] Platform:      win32
+[debug] [2025-05-04T18:57:37.566Z] Node Version:  v22.15.0
+[debug] [2025-05-04T18:57:37.567Z] Time:          Mon May 05 2025 02:57:37 GMT+0800 (台北標準時間)
+[debug] [2025-05-04T18:57:37.567Z] ----------------------------------------------------------------------
+[debug] 
+[debug] [2025-05-04T18:57:37.802Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform"]
+[debug] [2025-05-04T18:57:37.803Z] > authorizing via signed-in user (eragon.rain@gmail.com)
+[info] 
+     ######## #### ########  ######## ########     ###     ######  ########
+     ##        ##  ##     ## ##       ##     ##  ##   ##  ##       ##
+     ######    ##  ########  ######   ########  #########  ######  ######
+     ##        ##  ##    ##  ##       ##     ## ##     ##       ## ##
+     ##       #### ##     ## ######## ########  ##     ##  ######  ########
+
+You're about to initialize a Firebase project in this directory:
+
+  D:\discord-oauth-test
+
+Before we get started, keep in mind:
+
+  * You are initializing within an existing Firebase project directory
+

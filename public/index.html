@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Discord OAuth2 Login with Firebase</title>
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            background-color: #36393f;
+            color: #ffffff;
+            padding: 20px;
+        }
+        .container {
+            text-align: center;
+            padding: 2rem;
+            background-color: #2f3136;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            max-width: 800px;
+            width: 100%;
+        }
+        .login-btn {
+            background-color: #5865F2;
+            color: white;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 4px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: background-color 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin: 20px auto;
+        }
+        .login-btn:hover {
+            background-color: #4752C4;
+        }
+        .discord-icon {
+            width: 20px;
+            height: 20px;
+        }
+        .user-info {
+            margin-top: 20px;
+            padding: 15px;
+            background-color: #40444b;
+            border-radius: 4px;
+            display: none;
+        }
+        .avatar {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            margin-bottom: 10px;
+        }
+        .guilds-container {
+            margin-top: 20px;
+            text-align: left;
+        }
+        .guilds-title {
+            font-size: 18px;
+            margin-bottom: 10px;
+            color: #b9bbbe;
+        }
+        .guilds-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 15px;
+            margin-top: 10px;
+        }
+        .guild-card {
+            background-color: #2f3136;
+            border-radius: 4px;
+            padding: 10px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            transition: background-color 0.2s;
+        }
+        .guild-card:hover {
+            background-color: #40444b;
+        }
+        .guild-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+        }
+        .guild-info {
+            flex: 1;
+        }
+        .guild-name {
+            font-weight: bold;
+            margin-bottom: 4px;
+        }
+        .guild-owner {
+            font-size: 12px;
+            color: #b9bbbe;
+        }
+        .error-message {
+            color: #ed4245;
+            margin-top: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Discord OAuth2 Login with Firebase</h1>
+        <button class="login-btn" onclick="loginWithDiscord()">
+            <img src="https://assets-global.website-files.com/6257adef93867e50d84d30e2/636e0a6a49cf127bf92de1e2_icon_clyde_white_RGB.png" 
+                 alt="Discord" class="discord-icon">
+            Login with Discord
+        </button>
+        <div id="userInfo" class="user-info">
+            <img id="userAvatar" class="avatar" src="" alt="User Avatar">
+            <h2 id="username"></h2>
+            <p id="discriminator"></p>
+            <div class="guilds-container">
+                <h3 class="guilds-title">Your Servers</h3>
+                <div id="guildsGrid" class="guilds-grid"></div>
+            </div>
+        </div>
+        <div id="errorMessage" class="error-message"></div>
+    </div>
+
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore-compat.js"></script>
+    
+    <!-- Configuration -->
+    <script src="/js/config.js"></script>
+    
+    <script>
+        // Initialize Firebase
+        firebase.initializeApp(firebaseConfig);
+
+        function loginWithDiscord() {
+            const authUrl = `https://discord.com/api/oauth2/authorize?client_id=${discordConfig.clientId}&redirect_uri=${encodeURIComponent(discordConfig.redirectUri)}&response_type=code&scope=${discordConfig.scope}`;
+            window.location.href = authUrl;
+        }
+
+        function displayGuilds(guilds) {
+            const guildsGrid = document.getElementById('guildsGrid');
+            guildsGrid.innerHTML = '';
+
+            guilds.forEach(guild => {
+                const guildCard = document.createElement('div');
+                guildCard.className = 'guild-card';
+                
+                guildCard.innerHTML = `
+                    <img src="${guild.icon || 'https://cdn.discordapp.com/embed/avatars/0.png'}" 
+                         alt="${guild.name}" class="guild-icon">
+                    <div class="guild-info">
+                        <div class="guild-name">${guild.name}</div>
+                        ${guild.owner ? '<div class="guild-owner">Owner</div>' : ''}
+                    </div>
+                `;
+                
+                guildsGrid.appendChild(guildCard);
+            });
+        }
+
+        // Check for token in URL
+        const urlParams = new URLSearchParams(window.location.search);
+        const token = urlParams.get('token');
+        const error = urlParams.get('error');
+        
+        if (error) {
+            document.getElementById('errorMessage').textContent = 'Authentication failed. Please try again.';
+        }
+        
+        if (token) {
+            // Sign in with custom token
+            firebase.auth().signInWithCustomToken(token)
+                .then((userCredential) => {
+                    // Get user info from Firestore
+                    return firebase.firestore().collection('users').doc(userCredential.user.uid).get();
+                })
+                .then((doc) => {
+                    if (doc.exists) {
+                        const user = doc.data();
+                        document.getElementById('userInfo').style.display = 'block';
+                        document.getElementById('userAvatar').src = user.avatar;
+                        document.getElementById('username').textContent = user.username;
+                        document.getElementById('discriminator').textContent = `#${user.discriminator}`;
+                        
+                        if (user.guilds && user.guilds.length > 0) {
+                            displayGuilds(user.guilds);
+                        }
+                    }
+                })
+                .catch((error) => {
+                    console.error('Error:', error);
+                    document.getElementById('errorMessage').textContent = 'Failed to load user data.';
+                });
+        }
+    </script>
+</body>
+</html> 

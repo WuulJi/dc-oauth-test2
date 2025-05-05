@@ -1,3 +1,5 @@
 # SpecStory explanation file
 .specstory/.what-is-this.md
 node_modules
+functions/.env.yaml
+functions/service-account.json

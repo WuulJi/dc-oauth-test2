@@ -11,12 +11,35 @@ const {onRequest} = require("firebase-functions/v2/https");
 const admin = require("firebase-admin");
 const axios = require("axios");
 
-admin.initializeApp();
+// Initialize Firebase Admin with explicit configuration
+admin.initializeApp({
+  credential: admin.credential.applicationDefault(),
+  projectId: "discord-oauth-test2"
+});
+
+// 添加服務帳戶權限
+admin.auth().createCustomToken = async (uid) => {
+  const serviceAccount = require('./service-account.json');
+  const jwt = require('jsonwebtoken');
+  
+  const now = Math.floor(Date.now() / 1000);
+  const payload = {
+    uid: uid,
+    iat: now,
+    exp: now + 3600,
+    aud: 'https://identitytoolkit.googleapis.com/google.identity.identitytoolkit.v1.IdentityToolkit',
+    iss: serviceAccount.client_email,
+    sub: serviceAccount.client_email
+  };
+  
+  const token = jwt.sign(payload, serviceAccount.private_key, { algorithm: 'RS256' });
+  return token;
+};
 
 // Discord OAuth2 configuration
 const clientId = "1368261758862758101";
 const clientSecret = "E7sjZPRnFaUi_EYBM274dfuRVHgqsUWH";
-const redirectUri = "https://discord-oauth-test2.web.app/auth/callback";
+const redirectUri = "https://discord-oauth-test2.web.app/auth/callback/";
 
 exports.discordAuth = onRequest(
   {
@@ -27,17 +50,39 @@ exports.discordAuth = onRequest(
     invoker: "public",
   },
   async (req, res) => {
+    console.log('Discord Auth function started');
+    console.log('Request URL:', req.url);
+    console.log('Request Query:', req.query);
+    console.log('Request Headers:', req.headers);
+    
+    // 設置 CORS 頭部
+    res.set('Access-Control-Allow-Origin', '*');
+    res.set('Access-Control-Allow-Methods', 'GET, POST');
+    res.set('Access-Control-Allow-Headers', 'Content-Type');
+
+    // 處理 OPTIONS 請求
+    if (req.method === 'OPTIONS') {
+      res.status(204).send('');
+      return;
+    }
+
     // 1. 獲取授權碼
-    const code = req.query.code;
+    const code = req.method === 'POST' ? req.body.code : req.query.code;
+    console.log('Received code:', code);
 
     if (!code) {
-      res.redirect("/");
+      console.log('No code provided, redirecting to home');
+      if (req.method === 'POST') {
+        res.status(400).json({ error: 'No code provided' });
+      } else {
+        res.redirect("https://discord-oauth-test2.web.app");
+      }
       return;
     }
 
     try {
       // 2. 交換 token
-      // Exchange code for token
+      console.log('Exchanging code for token...');
       const tokenResponse = await axios.post(
         "https://discord.com/api/oauth2/token",
         new URLSearchParams({
@@ -55,9 +100,10 @@ exports.discordAuth = onRequest(
       );
 
       const accessToken = tokenResponse.data.access_token;
+      console.log('Successfully obtained access token');
 
       // 3. 獲取用戶信息
-      // Get user info from Discord
+      console.log('Fetching user info from Discord...');
       const [userResponse, guildsResponse] = await Promise.all([
         axios.get("https://discord.com/api/users/@me", {
           headers: {
@@ -73,19 +119,52 @@ exports.discordAuth = onRequest(
 
       const discordUser = userResponse.data;
       const guilds = guildsResponse.data;
+      console.log('Discord user data:', JSON.stringify(discordUser, null, 2));
 
-      // 4. 創建 Firebase 令牌
-      // Create or update user in Firebase
+      // 4. 創建或更新 Firebase Authentication 用戶
+      try {
+        console.log('Attempting to get user from Firebase Auth...');
+        // 嘗試獲取現有用戶
+        const userRecord = await admin.auth().getUser(discordUser.id).catch((error) => {
+          console.log('User not found, will create new user:', error.message);
+          return null;
+        });
+        
+        if (!userRecord) {
+          console.log('Creating new user in Firebase Auth...');
+          // 如果用戶不存在，創建新用戶
+          const newUser = await admin.auth().createUser({
+            uid: discordUser.id,
+            displayName: discordUser.username,
+            photoURL: `https://cdn.discordapp.com/avatars/${discordUser.id}/${discordUser.avatar}.png`,
+          });
+          console.log('New user created:', JSON.stringify(newUser, null, 2));
+        } else {
+          console.log('Updating existing user in Firebase Auth...');
+          // 如果用戶存在，更新用戶信息
+          const updatedUser = await admin.auth().updateUser(discordUser.id, {
+            displayName: discordUser.username,
+            photoURL: `https://cdn.discordapp.com/avatars/${discordUser.id}/${discordUser.avatar}.png`,
+          });
+          console.log('User updated:', JSON.stringify(updatedUser, null, 2));
+        }
+      } catch (error) {
+        console.error('Error in Firebase Auth operation:', error);
+        throw error;
+      }
+
+      console.log('Creating custom token...');
+      // 5. 創建 Firebase 令牌
       const customToken = await admin.auth().createCustomToken(discordUser.id);
+      console.log('Custom token created successfully');
 
       // Store user info in Firestore
+      console.log('Storing user info in Firestore...');
       await admin.firestore().collection("users").doc(discordUser.id).set(
         {
           username: discordUser.username,
           discriminator: discordUser.discriminator,
-          avatar: `https://cdn.discordapp.com/avatars/${discordUser.id}/${
-            discordUser.avatar
-          }.png`,
+          avatar: `https://cdn.discordapp.com/avatars/${discordUser.id}/${discordUser.avatar}.png`,
           guilds: guilds.map((guild) => ({
             id: guild.id,
             name: guild.name,
@@ -95,17 +174,26 @@ exports.discordAuth = onRequest(
             owner: guild.owner,
             permissions: guild.permissions,
           })),
-          lastLogin: admin.firestore.FieldValue.serverTimestamp(), // 最後登入時間
+          lastLogin: admin.firestore.FieldValue.serverTimestamp(),
         },
         {merge: true},
       );
+      console.log('User info stored in Firestore');
 
-      // 5. 重定向到前端
-      // Redirect to frontend with token
-      res.redirect(`/?token=${customToken}`);
+      // 6. 重定向到前端
+      console.log('Redirecting to frontend with token');
+      if (req.method === 'POST') {
+        res.json({ token: customToken });
+      } else {
+        res.redirect(`https://discord-oauth-test2.web.app/?token=${customToken}`);
+      }
     } catch (error) {
-      console.error("Error:", error);
-      res.redirect("/?error=auth_failed");
+      console.error("Error in Discord Auth process:", error);
+      if (req.method === 'POST') {
+        res.status(500).json({ error: 'Authentication failed' });
+      } else {
+        res.redirect("https://discord-oauth-test2.web.app/?error=auth_failed");
+      }
     }
   },
 );

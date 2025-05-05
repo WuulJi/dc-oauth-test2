@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Discord OAuth2 Callback</title>
+    <script>
+        // 獲取 URL 參數
+        const urlParams = new URLSearchParams(window.location.search);
+        const code = urlParams.get('code');
+        
+        if (code) {
+            // 如果有授權碼，發送 POST 請求到 Cloud Function
+            fetch('https://asia-east1-discord-oauth-test2.cloudfunctions.net/discordAuth', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ code: code })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.token) {
+                    // 如果有 token，重定向到主頁面
+                    window.location.href = `https://discord-oauth-test2.web.app/?token=${data.token}`;
+                } else {
+                    // 如果沒有 token，重定向到主頁面並顯示錯誤
+                    window.location.href = 'https://discord-oauth-test2.web.app/?error=auth_failed';
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                window.location.href = 'https://discord-oauth-test2.web.app/?error=auth_failed';
+            });
+        } else {
+            // 如果沒有授權碼，重定向到首頁
+            window.location.href = 'https://discord-oauth-test2.web.app';
+        }
+    </script>
+</head>
+<body>
+    <p>正在處理 Discord 登入...</p>
+</body>
+</html> 

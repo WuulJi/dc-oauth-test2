@@ -106,6 +106,25 @@
             color: #ed4245;
             margin-top: 10px;
         }
+        .loading {
+            display: none;
+            margin: 20px 0;
+            color: #b9bbbe;
+        }
+        .logout-btn {
+            background-color: #ed4245;
+            color: white;
+            padding: 8px 16px;
+            border: none;
+            border-radius: 4px;
+            font-size: 14px;
+            cursor: pointer;
+            transition: background-color 0.2s;
+            margin-top: 20px;
+        }
+        .logout-btn:hover {
+            background-color: #d83c3e;
+        }
     </style>
 </head>
 <body>
@@ -116,6 +135,7 @@
                  alt="Discord" class="discord-icon">
             Login with Discord
         </button>
+        <div id="loading" class="loading">Loading...</div>
         <div id="userInfo" class="user-info">
             <img id="userAvatar" class="avatar" src="" alt="User Avatar">
             <h2 id="username"></h2>
@@ -124,6 +144,7 @@
                 <h3 class="guilds-title">Your Servers</h3>
                 <div id="guildsGrid" class="guilds-grid"></div>
             </div>
+            <button class="logout-btn" onclick="logout()">Logout</button>
         </div>
         <div id="errorMessage" class="error-message"></div>
     </div>
@@ -136,13 +157,38 @@
     <!-- Configuration -->
     <script src="/js/config.js"></script>
     
-    <script>
+    <script>        
         // Initialize Firebase
         firebase.initializeApp(firebaseConfig);
 
+        // Set up auth state listener
+        firebase.auth().onAuthStateChanged((user) => {
+            if (user) {
+                // loadUserData 會自動處理
+                loadUserData(user.uid);
+            } else {
+                document.getElementById('userInfo').style.display = 'none';
+            }
+        });
+
         function loginWithDiscord() {
-            const authUrl = `https://discord.com/api/oauth2/authorize?client_id=${discordConfig.clientId}&redirect_uri=${encodeURIComponent(discordConfig.redirectUri)}&response_type=code&scope=${discordConfig.scope}`;
+            // 確保 redirectUri 以斜線結尾
+            const redirectUri = discordConfig.redirectUri.endsWith('/') 
+                ? discordConfig.redirectUri 
+                : discordConfig.redirectUri + '/';
+            
+            const authUrl = `https://discord.com/oauth2/authorize?client_id=${discordConfig.clientId}&response_type=code&redirect_uri=${encodeURIComponent(redirectUri)}&scope=${discordConfig.scope.replace(' ', '+')}`;
             window.location.href = authUrl;
+        }
+
+        function logout() {
+            firebase.auth().signOut()
+                .then(() => {
+                    window.location.href = '/';
+                })
+                .catch((error) => {
+                    document.getElementById('errorMessage').textContent = 'Error signing out: ' + error.message;
+                });
         }
 
         function displayGuilds(guilds) {
@@ -166,22 +212,11 @@
             });
         }
 
-        // Check for token in URL
-        const urlParams = new URLSearchParams(window.location.search);
-        const token = urlParams.get('token');
-        const error = urlParams.get('error');
-        
-        if (error) {
-            document.getElementById('errorMessage').textContent = 'Authentication failed. Please try again.';
-        }
-        
-        if (token) {
-            // Sign in with custom token
-            firebase.auth().signInWithCustomToken(token)
-                .then((userCredential) => {
-                    // Get user info from Firestore
-                    return firebase.firestore().collection('users').doc(userCredential.user.uid).get();
-                })
+        function loadUserData(uid) {
+            document.getElementById('loading').style.display = 'block';
+            document.getElementById('errorMessage').textContent = '';
+
+            firebase.firestore().collection('users').doc(uid).get()
                 .then((doc) => {
                     if (doc.exists) {
                         const user = doc.data();
@@ -193,11 +228,39 @@
                         if (user.guilds && user.guilds.length > 0) {
                             displayGuilds(user.guilds);
                         }
+                    } else {
+                        document.getElementById('errorMessage').textContent = 'User data not found.';
                     }
                 })
                 .catch((error) => {
-                    console.error('Error:', error);
-                    document.getElementById('errorMessage').textContent = 'Failed to load user data.';
+                    document.getElementById('errorMessage').textContent = 'Error loading user data: ' + error.message;
+                })
+                .finally(() => {
+                    document.getElementById('loading').style.display = 'none';
+                });
+        }
+
+        // Check for token in URL
+        const urlParams = new URLSearchParams(window.location.search);
+        const token = urlParams.get('token');
+        const error = urlParams.get('error');
+        
+        if (error) {
+            document.getElementById('errorMessage').textContent = 'Authentication failed. Please try again.';
+        }
+        
+        if (token) {
+            document.getElementById('loading').style.display = 'block';
+            // Sign in with custom token
+            firebase.auth().signInWithCustomToken(token)
+                .then((userCredential) => {
+                    // The auth state listener will handle loading user data
+                })
+                .catch((error) => {
+                    document.getElementById('errorMessage').textContent = 'Error signing in: ' + error.message;
+                })
+                .finally(() => {
+                    document.getElementById('loading').style.display = 'none';
                 });
         }
     </script>

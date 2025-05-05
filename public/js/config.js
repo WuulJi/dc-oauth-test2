@@ -12,6 +12,6 @@ const firebaseConfig = {
 // Discord OAuth2 configuration
 const discordConfig = {
     clientId: '1368261758862758101',
-    redirectUri: 'https://discord-oauth-test2.web.app/auth/callback',
+    redirectUri: 'https://discord-oauth-test2.web.app/auth/callback/',
     scope: 'identify guilds'
 }; 

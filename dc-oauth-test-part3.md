@@ -954,7 +954,71 @@ _**Assistant**_
 
 ## 1. 金鑰的放置位置
 
-- 你把 `service-account.json` 放在 `
+- 你把 `service-account.json` 放在 `functions/` 目錄下。
+- 這個檔案**只會被後端（Cloud Functions）讀取**，不會被前端網頁存取。
+
+---
+
+## 2. 程式碼如何載入金鑰
+
+在 `functions/index.js` 裡有這段程式碼（你自訂的 createCustomToken）：
+
+```js
+admin.auth().createCustomToken = async (uid) => {
+  const serviceAccount = require('./service-account.json');
+  const jwt = require('jsonwebtoken');
+  
+  const now = Math.floor(Date.now() / 1000);
+  const payload = {
+    uid: uid,
+    iat: now,
+    exp: now + 3600,
+    aud: 'https://identitytoolkit.googleapis.com/google.identity.identitytoolkit.v1.IdentityToolkit',
+    iss: serviceAccount.client_email,
+    sub: serviceAccount.client_email
+  };
+  
+  const token = jwt.sign(payload, serviceAccount.private_key, { algorithm: 'RS256' });
+  return token;
+};
+```
+
+### 這裡發生了什麼事？
+
+- 你的程式用 `require('./service-account.json')` 讀取金鑰內容。
+- 取出裡面的 `client_email` 和 `private_key`。
+- 用這些資訊手動產生一個 JWT（custom token），這個 token 只有有正確私鑰的人才能簽發。
+- 這個 custom token 會被前端用來登入 Firebase，Firebase 會驗證這個 token 是否由「專案的 service account」簽發，來決定是否信任。
+
+---
+
+## 3. 其他地方的運作
+
+- 你在 `admin.initializeApp()` 時也有用到 service account（雖然你用的是 `applicationDefault`，但如果在本地端測試，通常還是會自動抓取 service-account.json 或環境變數）。
+- 這讓你可以安全地呼叫 `admin.auth().createUser()`、`admin.auth().updateUser()` 等管理員 API。
+
+---
+
+## 4. 運作流程總結
+
+1. Cloud Function 啟動時載入 `service-account.json`。
+2. 需要產生 custom token 時，讀取金鑰內容，簽發 JWT。
+3. 需要操作 Firebase Auth 或 Firestore 時，Admin SDK 會用這個金鑰自動取得存取權限。
+4. 這一切都只在 server 端進行，前端完全不會接觸到這個金鑰。
+
+---
+
+## 5. 安全性
+
+- 這個金鑰**絕對不能放到前端**，也不要上傳到公開的 git repository。
+- 只要你把它放在 Cloud Functions 的 server 端，並用 `.gitignore` 排除，就很安全。
+
+---
+
+**總結：**  
+這個金鑰讓 Cloud Functions 具備「管理員」權限，能安全地產生 custom token、管理 Firebase Auth 使用者、寫入 Firestore，並且所有敏感操作都只在 server 端進行。
+
+如果你還想知道更細節的運作（例如 JWT 的驗證流程、Firebase 如何信任這個 token），也可以再問我！
 
 ---
 

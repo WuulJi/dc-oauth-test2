@@ -9,6 +9,7 @@
 - Firebase Authentication 用戶管理
 - Firestore 儲存用戶資訊與伺服器列表
 - 前端顯示 Discord 頭像、名稱、標籤與伺服器列表
+- 限制特定 Discord 伺服器成員才能登入
 
 ## 技術棧
 - Firebase Hosting
@@ -23,6 +24,7 @@
 - 申請 [Discord Developer Portal](https://discord.com/developers/applications) 應用，取得 Client ID、Client Secret
 - 在 Discord 應用設定 OAuth2 Redirect URI，填入：  
   `https://<your-firebase-project>.web.app/auth/callback`
+- 設定允許登入的 Discord 伺服器 ID（在 Firebase Functions 環境變數中設定）
 
 ### 2. Firebase 專案初始化
 ```bash
@@ -33,7 +35,7 @@ firebase init
 
 ### 3. 設定 Discord 環境變數
 ```bash
-firebase functions:config:set discord.client_id="你的ClientID" discord.client_secret="你的ClientSecret"
+firebase functions:config:set discord.client_id="你的ClientID" discord.client_secret="你的ClientSecret" discord.allowed_guild_id="允許登入的伺服器ID"
 ```
 
 ### 4. 安裝依賴
@@ -73,6 +75,8 @@ firebase deploy
   - **A:** 請確認 Discord OAuth2 scope 包含 `guilds`，且 Cloud Function 有正確存取權限。
 - **Q:** 如何更換 Firebase 專案？
   - **A:** 使用 `firebase use --add` 重新綁定專案。
+- **Q:** 為什麼我無法登入系統？
+  - **A:** 請確認您是否為允許登入的 Discord 伺服器成員。如果確認是成員但仍無法登入，請聯繫管理員。
 
 ## 參考資源
 - [Firebase 官方文件](https://firebase.google.com/docs)

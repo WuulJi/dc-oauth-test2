@@ -1,6 +1,13 @@
 # SpecStory explanation file
-.specstory/.what-is-this.md
+.specstory/
 node_modules
 functions/.env.yaml
 functions/service-account.json
 public/js/config.js
+dc-oauth-test_登入資訊存到firestore.md
+dc-oauth-test_限制指定DC伺服器的使用者登入.md
+dc-oauth-test-part2.md
+dc-oauth-test-part3.md
+dc-oauth-test.md
+# SpecStory explanation file
+.specstory/.what-is-this.md

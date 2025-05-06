@@ -3,3 +3,4 @@
 node_modules
 functions/.env.yaml
 functions/service-account.json
+public/js/config.js

@@ -10,6 +10,11 @@
 const {onRequest} = require("firebase-functions/v2/https");
 const admin = require("firebase-admin");
 const axios = require("axios");
+const {defineString} = require("firebase-functions/params");
+
+// Define configuration parameters
+const discordClientId = defineString("DISCORD_CLIENT_ID");
+const discordClientSecret = defineString("DISCORD_CLIENT_SECRET");
 
 // Initialize Firebase Admin with explicit configuration
 admin.initializeApp({
@@ -37,8 +42,8 @@ admin.auth().createCustomToken = async (uid) => {
 };
 
 // Discord OAuth2 configuration
-const clientId = "1368261758862758101";
-const clientSecret = "E7sjZPRnFaUi_EYBM274dfuRVHgqsUWH";
+const clientId = discordClientId.value();
+const clientSecret = discordClientSecret.value();
 const redirectUri = "https://discord-oauth-test2.web.app/auth/callback/";
 
 exports.discordAuth = onRequest(
@@ -162,19 +167,9 @@ exports.discordAuth = onRequest(
       console.log('Storing user info in Firestore...');
       await admin.firestore().collection("users").doc(discordUser.id).set(
         {
+          id: discordUser.id,
           username: discordUser.username,
-          discriminator: discordUser.discriminator,
-          avatar: `https://cdn.discordapp.com/avatars/${discordUser.id}/${discordUser.avatar}.png`,
-          guilds: guilds.map((guild) => ({
-            id: guild.id,
-            name: guild.name,
-            icon: guild.icon
-              ? `https://cdn.discordapp.com/icons/${guild.id}/${guild.icon}.png`
-              : null,
-            owner: guild.owner,
-            permissions: guild.permissions,
-          })),
-          lastLogin: admin.firestore.FieldValue.serverTimestamp(),
+          email: discordUser.email
         },
         {merge: true},
       );

@@ -59,9 +59,41 @@
             border-radius: 50%;
             margin-bottom: 10px;
         }
+        .guild-info {
+            margin-top: 20px;
+            padding: 15px;
+            background-color: #2f3136;
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .guild-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+        }
+        .guild-name {
+            font-size: 16px;
+            color: #ffffff;
+        }
+        .user-details {
+            margin-top: 15px;
+        }
+        .user-details p {
+            margin: 5px 0;
+            color: #b9bbbe;
+        }
+        .user-details strong {
+            color: #ffffff;
+        }
         .error-message {
             color: #ed4245;
             margin-top: 10px;
+            padding: 10px;
+            background-color: rgba(237, 66, 69, 0.1);
+            border-radius: 4px;
+            display: none;
         }
         .loading {
             display: none;
@@ -95,8 +127,13 @@
         <div id="loading" class="loading">Loading...</div>
         <div id="userInfo" class="user-info">
             <img id="userAvatar" class="avatar" src="" alt="User Avatar">
-            <h2 id="username"></h2>
-            <p id="email"></p>
+            <div class="user-details">
+                <h2 id="username"></h2>                
+            </div>
+            <div id="guildInfo" class="guild-info">
+                <img id="guildIcon" class="guild-icon" src="" alt="Guild Icon">
+                <span id="guildName" class="guild-name"></span>
+            </div>
             <button class="logout-btn" onclick="logout()">Logout</button>
         </div>
         <div id="errorMessage" class="error-message"></div>
@@ -147,15 +184,25 @@
                     if (doc.exists) {
                         const user = doc.data();
                         document.getElementById('userInfo').style.display = 'block';
+                        
+                        // 設置用戶資訊
                         document.getElementById('userAvatar').src = `https://cdn.discordapp.com/avatars/${user.id}/${user.avatar}.png`;
-                        document.getElementById('username').textContent = user.username;
-                        document.getElementById('email').textContent = user.email;
+                        document.getElementById('username').textContent = user.username;                        
+                        
+                        // 設置伺服器資訊
+                        if (user.guild) {
+                            const guildIcon = user.guild.icon 
+                                ? `https://cdn.discordapp.com/icons/${user.guild.id}/${user.guild.icon}.png`
+                                : 'https://cdn.discordapp.com/embed/avatars/0.png';
+                            document.getElementById('guildIcon').src = guildIcon;
+                            document.getElementById('guildName').textContent = user.guild.name;
+                        }
                     } else {
-                        document.getElementById('errorMessage').textContent = 'User data not found.';
+                        document.getElementById('errorMessage').textContent = '找不到用戶資料。';
                     }
                 })
                 .catch((error) => {
-                    document.getElementById('errorMessage').textContent = 'Error loading user data: ' + error.message;
+                    document.getElementById('errorMessage').textContent = '載入用戶資料時發生錯誤: ' + error.message;
                 })
                 .finally(() => {
                     document.getElementById('loading').style.display = 'none';
@@ -168,7 +215,19 @@
         const error = urlParams.get('error');
         
         if (error) {
-            document.getElementById('errorMessage').textContent = 'Authentication failed. Please try again.';
+            const errorMessage = document.getElementById('errorMessage');
+            errorMessage.style.display = 'block';
+            
+            switch (error) {
+                case 'not_in_guild':
+                    errorMessage.textContent = '您必須是特定 Discord 伺服器的成員才能使用此應用程式。請加入指定的伺服器後再試一次。';
+                    break;
+                case 'auth_failed':
+                    errorMessage.textContent = '認證失敗，請重試。';
+                    break;
+                default:
+                    errorMessage.textContent = '發生錯誤，請重試。';
+            }
         }
         
         if (token) {

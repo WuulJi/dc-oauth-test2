@@ -128,8 +128,7 @@
         <div id="userInfo" class="user-info">
             <img id="userAvatar" class="avatar" src="" alt="User Avatar">
             <div class="user-details">
-                <h2 id="username"></h2>
-                <p><strong>Email:</strong> <span id="email"></span></p>
+                <h2 id="username"></h2>                
             </div>
             <div id="guildInfo" class="guild-info">
                 <img id="guildIcon" class="guild-icon" src="" alt="Guild Icon">
@@ -188,8 +187,7 @@
                         
                         // 設置用戶資訊
                         document.getElementById('userAvatar').src = `https://cdn.discordapp.com/avatars/${user.id}/${user.avatar}.png`;
-                        document.getElementById('username').textContent = user.username;
-                        document.getElementById('email').textContent = user.email;
+                        document.getElementById('username').textContent = user.username;                        
                         
                         // 設置伺服器資訊
                         if (user.guild) {

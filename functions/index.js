@@ -181,8 +181,7 @@ exports.discordAuth = onRequest(
       await admin.firestore().collection("users").doc(discordUser.id).set(
         {
           id: discordUser.id,
-          username: discordUser.username,
-          email: discordUser.email,
+          username: discordUser.username,          
           avatar: discordUser.avatar,
           guild: {
             id: allowedGuild.id,

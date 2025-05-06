@@ -16,7 +16,14 @@
                 },
                 body: JSON.stringify({ code: code })
             })
-            .then(response => response.json())
+            .then(response => {
+                if (!response.ok) {
+                    return response.json().then(data => {
+                        throw new Error(data.error || 'Authentication failed');
+                    });
+                }
+                return response.json();
+            })
             .then(data => {
                 if (data.token) {
                     // 如果有 token，重定向到主頁面
@@ -28,7 +35,12 @@
             })
             .catch(error => {
                 console.error('Error:', error);
-                window.location.href = 'https://discord-oauth-test2.web.app/?error=auth_failed';
+                // 根據錯誤類型重定向
+                if (error.message.includes('required Discord server')) {
+                    window.location.href = 'https://discord-oauth-test2.web.app/?error=not_in_guild';
+                } else {
+                    window.location.href = 'https://discord-oauth-test2.web.app/?error=auth_failed';
+                }
             });
         } else {
             // 如果沒有授權碼，重定向到首頁

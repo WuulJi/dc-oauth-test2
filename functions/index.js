@@ -15,6 +15,7 @@ const {defineString} = require("firebase-functions/params");
 // Define configuration parameters
 const discordClientId = defineString("DISCORD_CLIENT_ID");
 const discordClientSecret = defineString("DISCORD_CLIENT_SECRET");
+const allowedGuildId = defineString("ALLOWED_GUILD_ID");
 
 // Initialize Firebase Admin with explicit configuration
 admin.initializeApp({
@@ -126,6 +127,18 @@ exports.discordAuth = onRequest(
       const guilds = guildsResponse.data;
       console.log('Discord user data:', JSON.stringify(discordUser, null, 2));
 
+      // 驗證用戶是否在允許的伺服器中
+      const allowedGuild = guilds.find(guild => guild.id === allowedGuildId.value());
+      if (!allowedGuild) {
+        console.log('User is not in the allowed guild');
+        if (req.method === 'POST') {
+          res.status(403).json({ error: 'You must be a member of the required Discord server to use this application' });
+        } else {
+          res.redirect("https://discord-oauth-test2.web.app/?error=not_in_guild");
+        }
+        return;
+      }
+
       // 4. 創建或更新 Firebase Authentication 用戶
       try {
         console.log('Attempting to get user from Firebase Auth...');
@@ -169,7 +182,13 @@ exports.discordAuth = onRequest(
         {
           id: discordUser.id,
           username: discordUser.username,
-          email: discordUser.email
+          email: discordUser.email,
+          avatar: discordUser.avatar,
+          guild: {
+            id: allowedGuild.id,
+            name: allowedGuild.name,
+            icon: allowedGuild.icon
+          }
         },
         {merge: true},
       );

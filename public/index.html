@@ -59,49 +59,6 @@
             border-radius: 50%;
             margin-bottom: 10px;
         }
-        .guilds-container {
-            margin-top: 20px;
-            text-align: left;
-        }
-        .guilds-title {
-            font-size: 18px;
-            margin-bottom: 10px;
-            color: #b9bbbe;
-        }
-        .guilds-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-            gap: 15px;
-            margin-top: 10px;
-        }
-        .guild-card {
-            background-color: #2f3136;
-            border-radius: 4px;
-            padding: 10px;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            transition: background-color 0.2s;
-        }
-        .guild-card:hover {
-            background-color: #40444b;
-        }
-        .guild-icon {
-            width: 40px;
-            height: 40px;
-            border-radius: 50%;
-        }
-        .guild-info {
-            flex: 1;
-        }
-        .guild-name {
-            font-weight: bold;
-            margin-bottom: 4px;
-        }
-        .guild-owner {
-            font-size: 12px;
-            color: #b9bbbe;
-        }
         .error-message {
             color: #ed4245;
             margin-top: 10px;
@@ -139,11 +96,7 @@
         <div id="userInfo" class="user-info">
             <img id="userAvatar" class="avatar" src="" alt="User Avatar">
             <h2 id="username"></h2>
-            <p id="discriminator"></p>
-            <div class="guilds-container">
-                <h3 class="guilds-title">Your Servers</h3>
-                <div id="guildsGrid" class="guilds-grid"></div>
-            </div>
+            <p id="email"></p>
             <button class="logout-btn" onclick="logout()">Logout</button>
         </div>
         <div id="errorMessage" class="error-message"></div>
@@ -164,7 +117,6 @@
         // Set up auth state listener
         firebase.auth().onAuthStateChanged((user) => {
             if (user) {
-                // loadUserData 會自動處理
                 loadUserData(user.uid);
             } else {
                 document.getElementById('userInfo').style.display = 'none';
@@ -172,12 +124,7 @@
         });
 
         function loginWithDiscord() {
-            // 確保 redirectUri 以斜線結尾
-            const redirectUri = discordConfig.redirectUri.endsWith('/') 
-                ? discordConfig.redirectUri 
-                : discordConfig.redirectUri + '/';
-            
-            const authUrl = `https://discord.com/oauth2/authorize?client_id=${discordConfig.clientId}&response_type=code&redirect_uri=${encodeURIComponent(redirectUri)}&scope=${discordConfig.scope.replace(' ', '+')}`;
+            const authUrl = `https://discord.com/oauth2/authorize?client_id=${discordConfig.clientId}&response_type=code&redirect_uri=${encodeURIComponent(discordConfig.redirectUri)}&scope=${discordConfig.scope.replace(' ', '+')}`;
             window.location.href = authUrl;
         }
 
@@ -191,27 +138,6 @@
                 });
         }
 
-        function displayGuilds(guilds) {
-            const guildsGrid = document.getElementById('guildsGrid');
-            guildsGrid.innerHTML = '';
-
-            guilds.forEach(guild => {
-                const guildCard = document.createElement('div');
-                guildCard.className = 'guild-card';
-                
-                guildCard.innerHTML = `
-                    <img src="${guild.icon || 'https://cdn.discordapp.com/embed/avatars/0.png'}" 
-                         alt="${guild.name}" class="guild-icon">
-                    <div class="guild-info">
-                        <div class="guild-name">${guild.name}</div>
-                        ${guild.owner ? '<div class="guild-owner">Owner</div>' : ''}
-                    </div>
-                `;
-                
-                guildsGrid.appendChild(guildCard);
-            });
-        }
-
         function loadUserData(uid) {
             document.getElementById('loading').style.display = 'block';
             document.getElementById('errorMessage').textContent = '';
@@ -221,13 +147,9 @@
                     if (doc.exists) {
                         const user = doc.data();
                         document.getElementById('userInfo').style.display = 'block';
-                        document.getElementById('userAvatar').src = user.avatar;
+                        document.getElementById('userAvatar').src = `https://cdn.discordapp.com/avatars/${user.id}/${user.avatar}.png`;
                         document.getElementById('username').textContent = user.username;
-                        document.getElementById('discriminator').textContent = `#${user.discriminator}`;
-                        
-                        if (user.guilds && user.guilds.length > 0) {
-                            displayGuilds(user.guilds);
-                        }
+                        document.getElementById('email').textContent = user.email;
                     } else {
                         document.getElementById('errorMessage').textContent = 'User data not found.';
                     }
